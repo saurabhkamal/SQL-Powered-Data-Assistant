@@ -3,14 +3,14 @@ name: Deploy Application Docker Image to EC2 instance
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   Continuous-Integration:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Configure AWS credentials
@@ -24,14 +24,25 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build, tag, and push image to Amazon ECR
+      - name: Ensure ECR repository exists
+        env:
+          ECR_REPOSITORY: ${{ secrets.ECR_REPO }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        run: |
+          set -e
+          echo "Checking if ECR repository '$ECR_REPOSITORY' exists..."
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region "$AWS_DEFAULT_REGION" \
+            || aws ecr create-repository --repository-name "$ECR_REPOSITORY" --region "$AWS_DEFAULT_REGION" \
+            && echo "ECR repository '$ECR_REPOSITORY' created (or already existed)."
+
+      - name: Build, tag, and push image to ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ secrets.ECR_REPO }}
           IMAGE_TAG: latest
         run: |
-          # Build explicitly using Dockerfile in root
+          # Build using Dockerfile in repo root
           docker build -f ./Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
@@ -41,7 +52,7 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Configure AWS credentials
@@ -51,11 +62,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Login to Amazon ECR
+      - name: Login to Amazon ECR (again)
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Run Docker Image to serve users
+      - name: Run Docker Image (serve users)
         run: |
           docker run -d \
             -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
