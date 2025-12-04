@@ -6,5 +6,6 @@ pyaudio
 SpeechRecognition
 plotly
 psycopg2-binary
-
+openai
+os
 -e . 
