@@ -47,7 +47,7 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-  Continuous-Deployment:
+    Continuous-Deployment:
     needs: Continuous-Integration
     runs-on: self-hosted
 
@@ -62,17 +62,23 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
-      - name: Login to Amazon ECR (again)
-        id: login-ecr
+      - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Run Docker Image (serve users)
+      - name: Deploy Streamlit App
         run: |
+          # Stop and remove old container (if any)
+          docker stop sqlassist || true
+          docker rm sqlassist || true
+
+          # Pull latest image and run with correct port + name
           docker run -d \
+            --name sqlassist \
+            --restart unless-stopped \
+            -p 80:8501 \
             -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
             -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
             -e AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}" \
             -e PINECONE_API_KEY="${{ secrets.PINECONE_API_KEY }}" \
             -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            -p 8080:8080 \
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPO }}:latest
