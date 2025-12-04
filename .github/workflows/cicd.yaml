@@ -79,7 +79,7 @@ jobs:
             -e AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}" \
             -e PINECONE_API_KEY="${{ secrets.PINECONE_API_KEY }}" \
             -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-            -e DATABASE_URI="${{ secrets.DATABASE_API_URI }}" \
+            -e DATABASE_URI="${{ secrets.DATABASE_URI }}" \
             -e EURI_API_KEY="${{ secrets.EURI_API_KEY }}" \
             ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPO }}:latest \
             streamlit run app.py --server.port=8501 --server.address=0.0.0.0
